@@ -1,3 +1,6 @@
 {
     "debugpy.debugJustMyCode": true,
+    "terminal.integrated.env.linux": {
+        "PYTHONPATH": "${workspaceFolder}:${workspaceFolder}"
+    },
 }

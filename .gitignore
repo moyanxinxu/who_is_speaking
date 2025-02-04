@@ -1,3 +1,4 @@
 .conda
 ref
 data
+__pycache__
