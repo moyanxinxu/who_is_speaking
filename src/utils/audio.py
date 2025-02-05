@@ -1,4 +1,3 @@
-import os
 import wave
 from subprocess import CalledProcessError, run
 
@@ -6,7 +5,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from src.utils import hp
+from .config import hp
 
 
 class AudioParser:

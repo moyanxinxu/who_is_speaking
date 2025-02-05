@@ -1,6 +1,7 @@
 {
     "debugpy.debugJustMyCode": true,
+    "python.envFile": "/root/Documents/who_is_speaking/.env",
     "terminal.integrated.env.linux": {
-        "PYTHONPATH": "${workspaceFolder}:${workspaceFolder}"
+        "PYTHONPATH": "/root/Documents/who_is_speaking"
     },
 }

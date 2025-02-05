@@ -88,3 +88,7 @@ class SpearkerData(Dataset):
             seg_tensor = self._get_seg_tensor_from_audio(audio_path)
             seg_tensors.append(seg_tensor)
         return torch.concat(seg_tensors)
+
+if __name__ == "__main__":
+    dataset = SpearkerData(split="train")
+    print(len(dataset))

@@ -3,7 +3,7 @@ import random
 
 import numpy as np
 
-from src.utils import hp
+from .config import hp
 
 
 class MixDataPipe:
