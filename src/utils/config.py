@@ -29,3 +29,5 @@ class hp:
     # input_stride = 2
 
     filters_path = "src/assets/mel_filters.npz"
+
+    logits_dim = 34

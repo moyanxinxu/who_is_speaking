@@ -1,3 +1,5 @@
+import tempfile
+
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -20,7 +22,8 @@ class SpearkerData(Dataset):
         # _mixed_id: list[int] = list(range(len(_mixed_file)))
 
         mixed_file = self._get_seg_tensor_from_list(_mixed_file)
-        return mixed_file
+        labels = self._get_seg_labels_from_list(_mixed_file)
+        return mixed_file, labels
 
     def _get_mixed_file_list(self, split: str) -> list[list[str]]:
         assert split in [
@@ -33,14 +36,19 @@ class SpearkerData(Dataset):
         return mixed_file_list
 
     def _get_percent(self, input_path: list[str]) -> np.ndarray:
-        percent = list()
+        _percent = list()
         for audio_path in input_path:
-            _, frames = self.audio_parser.read(audio_path)
-            percent.append(len(frames))
+            params, _ = self.audio_parser.read(audio_path)
+            _percent.append(params.nframes)
 
-        percent = (np.array(percent) / np.sum(percent) * hp.n_mels).round().astype(int)
-        assert percent.sum() == hp.n_mels
-        return percent
+        percent: np.ndarray = (np.array(_percent) / np.sum(_percent)) * hp.logits_dim
+        percent = percent.round()
+        diff = hp.logits_dim - np.sum(percent)
+        if diff != 0:
+            percent[np.argmax(percent)] += diff
+
+        assert np.sum(percent) == hp.logits_dim
+        return percent.astype(int)
 
     def _get_seg_duration(self, seg_size: int) -> float:
         return seg_size * hp.hop_length / hp.sample_rate
@@ -83,12 +91,22 @@ class SpearkerData(Dataset):
         return torch.stack(segs)
 
     def _get_seg_tensor_from_list(self, audio_path_list: list[str]) -> torch.Tensor:
-        seg_tensors = list()
-        for audio_path in audio_path_list:
-            seg_tensor = self._get_seg_tensor_from_audio(audio_path)
-            seg_tensors.append(seg_tensor)
-        return torch.concat(seg_tensors)
+        with tempfile.NamedTemporaryFile(delete=True, suffix=".wav") as temp_file:
+            params, nframes = self.audio_parser.merge(audio_path_list)
+            self.audio_parser.write(temp_file, params, nframes)
+            seg_tensors = self._get_seg_tensor_from_audio(temp_file.name)
+        return seg_tensors
 
-if __name__ == "__main__":
-    dataset = SpearkerData(split="train")
-    print(len(dataset))
+    def _get_seg_labels_from_list(self, audio_path_list: list[str]) -> torch.Tensor:
+        _label = np.arange(len(audio_path_list))
+        percent = self._get_percent(audio_path_list)
+        label = np.repeat(_label, percent)
+        return torch.tensor(label)
+
+
+def collate_fn(batch):
+    input_features, labels = [], []
+    for row in batch:
+        input_features.append(row[0])
+        labels.append(row[1])
+    return torch.concat(input_features), torch.stack(labels)
