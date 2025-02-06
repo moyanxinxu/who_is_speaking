@@ -8,7 +8,7 @@ from torch.utils.data import Dataset
 from src.utils import AudioParser, MixDataPipe, hp
 
 
-class SpearkerData(Dataset):
+class SpearkerDataset(Dataset):
     def __init__(self, split: str):
         self.mix_data_pipe = MixDataPipe()
         self.audio_parser = AudioParser()
