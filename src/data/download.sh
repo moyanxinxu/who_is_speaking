@@ -1,0 +1,1 @@
+huggingface-cli download --repo-type dataset --resume-download s3prl/mini_voxceleb1 --local-dir ./

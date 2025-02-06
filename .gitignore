@@ -1,7 +1,10 @@
 .conda
 
 ref
-data
+src/data/train
+src/data/test
+src/data/valid
+src/data/.gitattributes
 
 __pycache__
 
