@@ -3,10 +3,20 @@ from dataclasses import dataclass
 
 @dataclass
 class hp:
+    device: str = "auto"  # ["auto", "cuda", "cpu", "mps"]
     model_name: str = "openai/whisper-tiny"
+    log_path: str = "src/assets/logging.log"
+    test_audio_path: str = "src/assets/test.mp3"
+    save_path: str = "src/assets/whisper-tiny-finetuned.pt"
+    checkpoint_path: str = "src/assets/whisper-tiny-finetuned.pt"
+
+    num_epoches = 10
+    train_batch_size = 8
+    test_batch_size = 8
+    lr = 1e-4
 
     max_speakers_in_audio: int = 5
-    min_speakers_in_audio: int = 2
+    min_speakers_in_audio: int = 1
 
     split2path = {
         "train": "src/data/train",
@@ -35,4 +45,4 @@ class hp:
     logits_dim: int = 34
 
     vocab_size: int = 51865
-    proj_size: int = max_speakers_in_audio + 3
+    proj_size: int = max_speakers_in_audio

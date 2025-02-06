@@ -1,4 +1,9 @@
 .conda
+
 ref
 data
+
 __pycache__
+
+whisper-tiny-finetuned.pt
+logging.log

@@ -117,3 +117,40 @@ class AudioParser:
         filters_path = hp.filters_path
         with np.load(filters_path, allow_pickle=False) as f:
             return torch.from_numpy(f[f"mel_{n_mels}"])
+
+    # copyed from https://github.com/openai/whisper/blob/517a43ecd132a2089d85f4ebc044728a71d49f6e/whisper/audio.py#L65
+    def _get_truncate(self, mel_seg: torch.Tensor) -> torch.Tensor:
+        mel_seg_size = mel_seg.size(-1)
+
+        if mel_seg_size > hp.n_frames:
+            mel_seg = mel_seg[:, : hp.n_frames]
+
+        if mel_seg_size < hp.n_frames:
+            pad_width = [0, hp.n_frames - mel_seg_size, 0, 0]
+            mel_seg = F.pad(mel_seg, pad_width)
+        return mel_seg
+
+    def _get_seg_tensor_from_audio(self, audio_path: str) -> torch.Tensor:
+        mel = self.get_log_mel(audio_path)
+
+        content_frames = mel.size(-1) - hp.n_frames
+        # content_duration = content_frames * hp.hop_length / hp.sample_rate
+
+        seek_points = [0]
+
+        if len(seek_points) % 2:
+            seek_points.append(content_frames)
+        seek_clips: list[tuple[int, int]] = list(
+            zip(seek_points[::2], seek_points[1::2])
+        )
+
+        segs = []
+        for start, end in seek_clips:
+            # time_offset = self._get_seg_duration(start)
+            # windows_end_time = (start + hp.n_frames) * hp.hop_length / hp.sample_rate
+            seg_size = min(hp.n_frames, content_frames - start, end - start)
+
+            # seg_duration = self._get_seg_duration(seg_size)
+            mel_seg = self._get_truncate(mel[:, start : start + seg_size])
+            segs.append(mel_seg)
+        return torch.stack(segs)
