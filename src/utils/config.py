@@ -9,11 +9,15 @@ class hp:
     test_audio_path: str = "src/assets/test.mp3"
     save_path: str = "src/assets/whisper-tiny-finetuned.pt"
     checkpoint_path: str = "src/assets/whisper-tiny-finetuned.pt"
+    random_state: int = 2025
 
-    num_epoches = 10
-    train_batch_size = 8
-    test_batch_size = 8
-    lr = 1e-4
+    vocab_path: str = "src/assets/vocab.json"
+    max_length: int = 3000
+
+    num_epoches: int = 10
+    train_batch_size: int = 8
+    test_batch_size: int = 8
+    lr: float = 1e-4
 
     max_speakers_in_audio: int = 5
     min_speakers_in_audio: int = 1
