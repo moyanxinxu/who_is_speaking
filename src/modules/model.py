@@ -2,7 +2,7 @@ import os
 from typing import Union
 
 import torch
-from transformers import WhisperForConditionalGeneration
+from transformers import WhisperModel
 from transformers.modeling_outputs import ModelOutput
 
 from src.utils import AudioParser, hp
@@ -13,52 +13,74 @@ from .tokenizer import WhisperTokenizerForDiarization
 class WhisperForDiarization(torch.nn.Module):
     def __init__(self):
         super().__init__()
-        self.base_model = WhisperForConditionalGeneration.from_pretrained(hp.model_name)
         self.tokenizer = WhisperTokenizerForDiarization()
-        self.proj_out = torch.nn.Linear(hp.vocab_size, hp.proj_size, bias=False)
+        self.whisper = WhisperModel.from_pretrained(hp.model_name)
+        self.proj_out = torch.nn.Linear(hp.decoder_out_size, hp.proj_size, bias=False)
         self.audio_parser = AudioParser()
-        self._freeze_params()  # A custom method to freeze the model parameters
+        self._freeze_params()
+
+    def _freeze_params(self):
+        for param in self.whisper.parameters():
+            param.requires_grad = False
 
     def forward(
         self,
         input_features: torch.Tensor,
         labels: Union[torch.Tensor, None] = None,
-        return_output_ids: bool = False,
+        # attention_mask: Union[torch.Tensor, None] = None,
     ) -> ModelOutput:
 
-        outputs = self.base_model(
+        encoder_outputs = self.whisper.encoder(
             input_features=input_features,
-            labels=labels,
         )
 
-        lm_logits: torch.Tensor = self.proj_out(outputs.logits)
+        if labels is not None:
+            decoder_input_ids = self.tokenizer.shift(labels)
+
+        decoder_outputs = self.whisper.decoder(
+            input_ids=decoder_input_ids,
+            encoder_hidden_states=encoder_outputs.last_hidden_state,
+        )
+
+        logits: torch.Tensor = self.proj_out(decoder_outputs.last_hidden_state)
 
         loss = None
         if labels is not None:
             loss_fn = torch.nn.CrossEntropyLoss()
 
-            loss = loss_fn(lm_logits.view(-1, hp.proj_size), labels.view(-1))
-
-        output_ids = None
-        if return_output_ids:
-            output_ids = torch.argmax(lm_logits, dim=-1)
+            loss = loss_fn(logits.view(-1, hp.proj_size), labels.view(-1))
 
         return ModelOutput(
             loss=loss,
-            logits=lm_logits,
-            output_ids=output_ids,
+            logits=logits,
             # past_key_values=outputs.past_key_values,
             # decoder_hidden_states=outputs.decoder_hidden_states,
             # decoder_attentions=outputs.decoder_attentions,
             # cross_attentions=outputs.cross_attentions,
             # encoder_last_hidden_state=outputs.encoder_last_hidden_state,
             # encoder_hidden_states=outputs.encoder_hidden_states,
-            # encoder_attentions=outputs.encoder_attentions,
+            # encoder_attentions=encoder_outputs.encoder_attentions,
         )
 
-    def _freeze_params(self):
-        self.base_model.requires_grad_(False)
-        self.proj_out.requires_grad_(True)
+    def predict(self, audio_path: str):
+        audio_features = self.audio_parser.get_seg_tensor_from_audio(audio_path)
+        prefix_tokens = torch.Tensor([[self.tokenizer.bos_token]])
+
+        encoder_outputs = self.whisper.encoder(input_features=audio_features)
+        generate = [prefix_tokens.item()]
+
+        for _ in range(hp.max_length):
+            latent = self.whisper.decoder(
+                input_ids=prefix_tokens,
+                encoder_hidden_states=encoder_outputs.last_hidden_state,
+            )
+
+            logits = self.proj_out(latent.last_hidden_state)
+            generate.append(torch.argmax(logits, dim=-1).item())
+
+            if generate[-1] == self.tokenizer.eos_token:
+                break
+        return generate
 
     def load_params(self, checkpoint: str):
         if os.path.isfile(checkpoint) and checkpoint.endswith(".pt"):

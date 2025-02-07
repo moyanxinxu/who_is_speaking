@@ -37,11 +37,10 @@ for epoch in trange(hp.num_epoches, colour="green"):
     idx = 0
     for input_features, labels in train_dataset:
         idx += 1
-        outputs = model(input_features, labels, return_output_ids=True)
+        outputs = model(input_features=input_features, labels=labels)
 
         logits: torch.Tensor = outputs.logits
         loss: torch.Tensor = outputs.loss
-        output_ids: torch.Tensor = outputs.output_ids
 
         optimizer.zero_grad()
         loss.backward()

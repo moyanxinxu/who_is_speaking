@@ -48,5 +48,7 @@ class hp:
 
     logits_dim: int = 34
 
-    vocab_size: int = 51865
+    decoder_out_size: int = 384
     proj_size: int = 7
+
+    eos_token_id: int = 1

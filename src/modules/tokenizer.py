@@ -11,8 +11,11 @@ from src.utils import hp
 class WhisperTokenizerForDiarization:
     def __init__(self):
         self.vocab = self.load_vocab(hp.vocab_path)
-        self.prefix_token = [self.vocab["<|startofdiarization|>"], self.vocab["<|zh|>"]]
-        self.suffix_token = [self.vocab["<|endofdiarization|>"]]
+        self.bos_token = self.vocab["<|startofdiarization|>"]
+        self.lang_token = self.vocab["<|zh|>"]
+        self.eos_token = self.vocab["<|endofdiarization|>"]
+        self.prefix_token = [self.bos_token, self.lang_token]
+        self.suffix_token = [self.eos_token]
         self.id2token = {v: k for k, v in self.vocab.items()}
 
     def load_vocab(self, vocab_path: str) -> dict[str, int]:
