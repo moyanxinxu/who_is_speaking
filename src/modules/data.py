@@ -3,10 +3,10 @@ import tempfile
 import numpy as np
 import torch
 from torch.utils.data import Dataset
+from transformers import WhisperFeatureExtractor
 
+from src.modules.tokenizer import WhisperTokenizerForDiarization
 from src.utils import AudioParser, MixDataPipe, hp
-
-from .tokenizer import WhisperTokenizerForDiarization
 
 
 class SpearkerDataset(Dataset):
@@ -14,6 +14,8 @@ class SpearkerDataset(Dataset):
         self.mix_data_pipe = MixDataPipe()
         self.audio_parser = AudioParser()
         self.tokenizer = WhisperTokenizerForDiarization()
+
+        self.processor = WhisperFeatureExtractor.from_pretrained(hp.model_name)
         self.mixed_file_list = self._get_mixed_file_list(split)
 
     def __len__(self) -> int:
@@ -30,18 +32,17 @@ class SpearkerDataset(Dataset):
         mixed_file_list = self.mix_data_pipe.remix(hp.split2path[split])
         return mixed_file_list
 
-    def _get_seg_duration(self, seg_size: int) -> float:
-        return seg_size * hp.hop_length / hp.sample_rate
-
     def _get_seg_tensor_from_list(self, audio_path_list: list[str]) -> torch.Tensor:
         with tempfile.NamedTemporaryFile(delete=True, suffix=".wav") as temp_file:
             params, nframes = self.audio_parser.merge(audio_path_list)
             self.audio_parser.write(temp_file.name, params, nframes)
-            seg_tensors = self.audio_parser.get_seg_tensor_from_audio(temp_file.name)
-        return seg_tensors
+            mel = self.processor(
+                self.audio_parser.load_audio(temp_file.name), return_tensors="pt"
+            )
+        return mel.input_features
 
     def _get_seg_labels_from_list(self, audio_path_list: list[str]) -> torch.Tensor:
-        _label = np.arange(len(audio_path_list))
+        _label = np.arange(len(audio_path_list)) + hp.speaker_idx_offset
         _audio_times = list()
         for audio_path in audio_path_list:
             params, _ = self.audio_parser.read(audio_path)

@@ -3,9 +3,11 @@
     "<|zh|>": 1,
     "<|speak1|>": 2,
     "<|speak2|>": 3,
-    "<|nospeech|>": 4,
-    "<|pad|>": 5,
-    "<|endofdiarization|>": 6,
-    "<|notimestamps|>": 7,
-    "<|en|>": 8
+    "<|speak3|>": 4,
+    "<|speak4|>": 5,
+    "<|speak5|>": 6,
+    "<|pad|>": 7,
+    "<|endofdiarization|>": 8,
+    "<|notimestamps|>": 9,
+    "<|en|>": 10
 }

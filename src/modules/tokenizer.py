@@ -54,5 +54,5 @@ class WhisperTokenizerForDiarization:
 
     def shift(self, text: torch.Tensor) -> torch.Tensor:
         """在默认第一个token为起始token的情况下, 将text向右移动一位"""
-        text = torch.cat([text[:, :1], text[:, :-1]], dim=1)
+        text = torch.cat([text[:, :1], text], dim=1)[:, :-1]
         return text

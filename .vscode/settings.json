@@ -5,5 +5,4 @@
     "PYTHONPATH": "/root/Documents/who_is_speaking/",
     "HF_ENDPOINT": "https://hf-mirror.com"
   },
-  "python.analysis.typeCheckingMode": "basic"
 }

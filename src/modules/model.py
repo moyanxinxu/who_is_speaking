@@ -2,10 +2,10 @@ import os
 from typing import Union
 
 import torch
-from transformers import WhisperModel
+from transformers import WhisperModel, WhisperProcessor
 from transformers.modeling_outputs import ModelOutput
 
-from src.utils import AudioParser, hp
+from src.utils import hp
 
 from .tokenizer import WhisperTokenizerForDiarization
 
@@ -16,26 +16,23 @@ class WhisperForDiarization(torch.nn.Module):
         self.tokenizer = WhisperTokenizerForDiarization()
         self.whisper = WhisperModel.from_pretrained(hp.model_name)
         self.proj_out = torch.nn.Linear(hp.decoder_out_size, hp.proj_size, bias=False)
-        self.audio_parser = AudioParser()
+        self.processor = WhisperProcessor.from_pretrained(hp.model_name)
         self._freeze_params()
 
     def _freeze_params(self):
-        for param in self.whisper.parameters():
-            param.requires_grad = False
+        self.whisper.encoder._freeze_parameters()
 
     def forward(
         self,
         input_features: torch.Tensor,
         labels: Union[torch.Tensor, None] = None,
-        # attention_mask: Union[torch.Tensor, None] = None,
     ) -> ModelOutput:
 
         encoder_outputs = self.whisper.encoder(
             input_features=input_features,
         )
 
-        if labels is not None:
-            decoder_input_ids = self.tokenizer.shift(labels)
+        decoder_input_ids = self.tokenizer.shift(labels) if labels is not None else None
 
         decoder_outputs = self.whisper.decoder(
             input_ids=decoder_input_ids,
@@ -62,23 +59,28 @@ class WhisperForDiarization(torch.nn.Module):
             # encoder_attentions=encoder_outputs.encoder_attentions,
         )
 
+    @torch.inference_mode()
     def predict(self, audio_path: str):
-        audio_features = self.audio_parser.get_seg_tensor_from_audio(audio_path)
-        prefix_tokens = torch.Tensor([[self.tokenizer.bos_token]])
+        prefix_tokens = torch.tensor([[self.tokenizer.bos_token]], dtype=torch.long)
+        input_features = self.processor(
+            audio_path,
+            sample_rate=hp.sample_rate,
+        ).input_features
 
-        encoder_outputs = self.whisper.encoder(input_features=audio_features)
+        encoder_outputs = self.whisper.encoder(input_features=input_features)
         generate = [prefix_tokens.item()]
 
-        for _ in range(hp.max_length):
+        for _ in range(hp.logits_dim):
             latent = self.whisper.decoder(
                 input_ids=prefix_tokens,
                 encoder_hidden_states=encoder_outputs.last_hidden_state,
             )
 
             logits = self.proj_out(latent.last_hidden_state)
-            generate.append(torch.argmax(logits, dim=-1).item())
+            prefix_tokens = torch.argmax(logits, dim=-1)
+            generate.append(prefix_tokens.item())
 
-            if generate[-1] == self.tokenizer.eos_token:
+            if prefix_tokens == self.tokenizer.eos_token:
                 break
         return generate
 
@@ -86,5 +88,6 @@ class WhisperForDiarization(torch.nn.Module):
         if os.path.isfile(checkpoint) and checkpoint.endswith(".pt"):
             params = torch.load(checkpoint)
             self.load_state_dict(params)
+            print(f"load checkpoint from {checkpoint}")
         else:
             raise FileNotFoundError("checkpoint file not valid")

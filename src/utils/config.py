@@ -49,6 +49,7 @@ class hp:
     logits_dim: int = 34
 
     decoder_out_size: int = 384
-    proj_size: int = 7
+    proj_size: int = 9
 
     eos_token_id: int = 1
+    speaker_idx_offset: int = 2
