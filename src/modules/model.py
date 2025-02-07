@@ -7,11 +7,14 @@ from transformers.modeling_outputs import ModelOutput
 
 from src.utils import AudioParser, hp
 
+from .tokenizer import WhisperTokenizerForDiarization
+
 
 class WhisperForDiarization(torch.nn.Module):
     def __init__(self):
         super().__init__()
         self.base_model = WhisperForConditionalGeneration.from_pretrained(hp.model_name)
+        self.tokenizer = WhisperTokenizerForDiarization()
         self.proj_out = torch.nn.Linear(hp.vocab_size, hp.proj_size, bias=False)
         self.audio_parser = AudioParser()
         self._freeze_params()  # A custom method to freeze the model parameters
@@ -20,13 +23,11 @@ class WhisperForDiarization(torch.nn.Module):
         self,
         input_features: torch.Tensor,
         labels: Union[torch.Tensor, None] = None,
-        decoder_input_ids: Union[torch.Tensor, None] = None,
         return_output_ids: bool = False,
     ) -> ModelOutput:
 
         outputs = self.base_model(
             input_features=input_features,
-            decoder_input_ids=decoder_input_ids,
             labels=labels,
         )
 

@@ -1,19 +1,11 @@
 {
-    "<|startofdiarization|>": 11,
-    "<|zh|>": 12,
-    "<|en|>": 13,
-    "<|endofdiarization|>": 14,
-    "<|nospeech|>": 15,
-    "<|pad|>": -100,
-    "<|notimestamps|>": 16,
-    "1": 1,
-    "2": 2,
-    "3": 3,
-    "4": 4,
-    "5": 5,
-    "6": 6,
-    "7": 7,
-    "8": 8,
-    "9": 9,
-    "10": 10
+    "<|startofdiarization|>": 0,
+    "<|zh|>": 1,
+    "<|speak1|>": 2,
+    "<|speak2|>": 3,
+    "<|nospeech|>": 4,
+    "<|pad|>": 5,
+    "<|endofdiarization|>": 6,
+    "<|notimestamps|>": 7,
+    "<|en|>": 8
 }

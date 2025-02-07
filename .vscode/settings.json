@@ -2,7 +2,7 @@
   "debugpy.debugJustMyCode": false,
   "python.envFile": "/root/Documents/who_is_speaking/.env",
   "terminal.integrated.env.linux": {
-    "PYTHONPATH": "/root/Documents/who_is_speaking",
+    "PYTHONPATH": "/root/Documents/who_is_speaking/",
     "HF_ENDPOINT": "https://hf-mirror.com"
   },
   "python.analysis.typeCheckingMode": "basic"

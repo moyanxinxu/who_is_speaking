@@ -49,6 +49,10 @@ class AudioParser:
 
         return wave._wave_params(*params), frames
 
+    def get_audio_time(self, params: wave._wave_params) -> int:
+        """四舍五入, 时间单位为秒"""
+        return round(params.nframes / params.framerate)
+
     # copyed from https://github.com/openai/whisper/blob/517a43ecd132a2089d85f4ebc044728a71d49f6e/whisper/audio.py#L110
     def load_audio(self, file: str, sample_rate: int = hp.sample_rate):
 
@@ -130,7 +134,7 @@ class AudioParser:
             mel_seg = F.pad(mel_seg, pad_width)
         return mel_seg
 
-    def _get_seg_tensor_from_audio(self, audio_path: str) -> torch.Tensor:
+    def get_seg_tensor_from_audio(self, audio_path: str) -> torch.Tensor:
         mel = self.get_log_mel(audio_path)
 
         content_frames = mel.size(-1) - hp.n_frames

@@ -4,8 +4,9 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from src.modules.tokenizer import WhisperTokenizerForDiarization, pad
 from src.utils import AudioParser, MixDataPipe, hp
+
+from .tokenizer import WhisperTokenizerForDiarization
 
 
 class SpearkerDataset(Dataset):
@@ -36,29 +37,30 @@ class SpearkerDataset(Dataset):
         with tempfile.NamedTemporaryFile(delete=True, suffix=".wav") as temp_file:
             params, nframes = self.audio_parser.merge(audio_path_list)
             self.audio_parser.write(temp_file.name, params, nframes)
-            seg_tensors = self.audio_parser._get_seg_tensor_from_audio(temp_file.name)
+            seg_tensors = self.audio_parser.get_seg_tensor_from_audio(temp_file.name)
         return seg_tensors
 
     def _get_seg_labels_from_list(self, audio_path_list: list[str]) -> torch.Tensor:
         _label = np.arange(len(audio_path_list))
-        _nframes = list()
-        # ! 可能不对
+        _audio_times = list()
         for audio_path in audio_path_list:
             params, _ = self.audio_parser.read(audio_path)
-            _nframes.append(params.nframes)
+            _audio_times.append(self.audio_parser.get_audio_time(params))
 
-        _label = np.repeat(_label, _nframes)
+        _label = np.repeat(_label, _audio_times)
 
         _label = self.tokenizer.add_special_token(_label)
         return torch.tensor(_label)
 
+
 def collate_fn(batch):
+    tokenizer = WhisperTokenizerForDiarization()
     input_features, labels = [], []
     for item in batch:
         input_features.append(item[0])
         labels.append(item[1])
 
-    labels = pad(labels)
+    labels = tokenizer.pad(labels)
 
     return torch.concat(input_features), torch.stack(labels)
 

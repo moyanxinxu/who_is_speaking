@@ -49,4 +49,4 @@ class hp:
     logits_dim: int = 34
 
     vocab_size: int = 51865
-    proj_size: int = max_speakers_in_audio
+    proj_size: int = 7
