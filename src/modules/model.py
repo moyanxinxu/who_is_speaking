@@ -5,7 +5,7 @@ import torch
 from transformers import WhisperModel, WhisperProcessor
 from transformers.modeling_outputs import ModelOutput
 
-from src.utils import hp
+from src.utils import AudioParser, hp
 
 from .tokenizer import WhisperTokenizerForDiarization
 
@@ -15,6 +15,7 @@ class WhisperForDiarization(torch.nn.Module):
         super().__init__()
         self.tokenizer = WhisperTokenizerForDiarization()
         self.whisper = WhisperModel.from_pretrained(hp.model_name)
+        self.audio_parser = AudioParser()
         self.proj_out = torch.nn.Linear(hp.decoder_out_size, hp.proj_size, bias=False)
         self.processor = WhisperProcessor.from_pretrained(hp.model_name)
         self._freeze_params()
@@ -61,28 +62,32 @@ class WhisperForDiarization(torch.nn.Module):
 
     @torch.inference_mode()
     def predict(self, audio_path: str):
-        prefix_tokens = torch.tensor([[self.tokenizer.bos_token]], dtype=torch.long)
+        input_ids = torch.tensor([[self.tokenizer.bos_token]], dtype=torch.long)
+
         input_features = self.processor(
-            audio_path,
-            sample_rate=hp.sample_rate,
+            self.audio_parser.load_audio(audio_path),
+            sampling_rate=hp.sample_rate,
+            return_tensors="pt",
         ).input_features
 
         encoder_outputs = self.whisper.encoder(input_features=input_features)
-        generate = [prefix_tokens.item()]
 
-        for _ in range(hp.logits_dim):
-            latent = self.whisper.decoder(
-                input_ids=prefix_tokens,
+        for _ in range(hp.max_target_length):
+            decoder_outputs = self.whisper.decoder(
+                input_ids=input_ids,
                 encoder_hidden_states=encoder_outputs.last_hidden_state,
             )
 
-            logits = self.proj_out(latent.last_hidden_state)
-            prefix_tokens = torch.argmax(logits, dim=-1)
-            generate.append(prefix_tokens.item())
+            last_logits = self.proj_out(decoder_outputs.last_hidden_state[:, -1, :])
 
-            if prefix_tokens == self.tokenizer.eos_token:
+            next_token = torch.argmax(last_logits, dim=-1, keepdim=True)
+
+            if next_token.item() == self.tokenizer.eos_token:
                 break
-        return generate
+
+            input_ids = torch.cat([input_ids, next_token], dim=-1)
+
+        return self.tokenizer.decode(input_ids[0].tolist())
 
     def load_params(self, checkpoint: str):
         if os.path.isfile(checkpoint) and checkpoint.endswith(".pt"):

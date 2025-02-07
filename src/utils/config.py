@@ -53,3 +53,4 @@ class hp:
 
     eos_token_id: int = 1
     speaker_idx_offset: int = 2
+    max_target_length: int = 42

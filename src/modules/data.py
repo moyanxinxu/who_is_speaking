@@ -5,8 +5,9 @@ import torch
 from torch.utils.data import Dataset
 from transformers import WhisperFeatureExtractor
 
-from src.modules.tokenizer import WhisperTokenizerForDiarization
 from src.utils import AudioParser, MixDataPipe, hp
+
+from .model import WhisperTokenizerForDiarization
 
 
 class SpearkerDataset(Dataset):

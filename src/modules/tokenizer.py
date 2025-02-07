@@ -33,6 +33,10 @@ class WhisperTokenizerForDiarization:
         if isinstance(input_ids, list):
             return self.prefix_token + input_ids + self.suffix_token
 
+    def decode(self, input_ids: Union[list[int], np.ndarray]) -> str:
+        tokens = [self.id2token[i] for i in input_ids]
+        return tokens
+
     def pad(
         self, text: list[torch.Tensor], dynamic_padding: bool = True
     ) -> list[torch.Tensor]:
