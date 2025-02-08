@@ -15,9 +15,9 @@ class WhisperForDiarization(torch.nn.Module):
         super().__init__()
         self.tokenizer = WhisperTokenizerForDiarization()
         self.whisper = WhisperModel.from_pretrained(hp.model_name)
-        self.audio_parser = AudioParser()
         self.proj_out = torch.nn.Linear(hp.decoder_out_size, hp.proj_size, bias=False)
         self.processor = WhisperProcessor.from_pretrained(hp.model_name)
+        self.audio_parser = AudioParser()
         self._freeze_params()
 
     def _freeze_params(self):
@@ -48,31 +48,25 @@ class WhisperForDiarization(torch.nn.Module):
 
             loss = loss_fn(logits.view(-1, hp.proj_size), labels.view(-1))
 
-        return ModelOutput(
-            loss=loss,
-            logits=logits,
-            # past_key_values=outputs.past_key_values,
-            # decoder_hidden_states=outputs.decoder_hidden_states,
-            # decoder_attentions=outputs.decoder_attentions,
-            # cross_attentions=outputs.cross_attentions,
-            # encoder_last_hidden_state=outputs.encoder_last_hidden_state,
-            # encoder_hidden_states=outputs.encoder_hidden_states,
-            # encoder_attentions=encoder_outputs.encoder_attentions,
-        )
+        return ModelOutput(loss=loss, logits=logits)
 
     @torch.inference_mode()
     def predict(self, audio_path: str):
         input_ids = torch.tensor([[self.tokenizer.bos_token]], dtype=torch.long)
 
+        audio_byte = self.audio_parser.load_audio(audio_path)
         input_features = self.processor(
-            self.audio_parser.load_audio(audio_path),
+            audio_byte,
             sampling_rate=hp.sample_rate,
             return_tensors="pt",
         ).input_features
 
         encoder_outputs = self.whisper.encoder(input_features=input_features)
 
-        for _ in range(hp.max_target_length):
+        audio_time = round(len(audio_byte) / hp.sample_rate)
+
+        # 加2是考虑了<|startofdiarization|>和<|zh|>两个token
+        for idx in range(audio_time + 2):
             decoder_outputs = self.whisper.decoder(
                 input_ids=input_ids,
                 encoder_hidden_states=encoder_outputs.last_hidden_state,
@@ -83,7 +77,10 @@ class WhisperForDiarization(torch.nn.Module):
             next_token = torch.argmax(last_logits, dim=-1, keepdim=True)
 
             if next_token.item() == self.tokenizer.eos_token:
-                break
+                if idx != audio_time - 1:
+                    next_token = input_ids[:, -1:]
+                else:
+                    break
 
             input_ids = torch.cat([input_ids, next_token], dim=-1)
 
