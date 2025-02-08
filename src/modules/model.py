@@ -2,6 +2,7 @@ import os
 from typing import Union
 
 import torch
+from tqdm import trange
 from transformers import WhisperModel, WhisperProcessor
 from transformers.modeling_outputs import ModelOutput
 
@@ -66,7 +67,7 @@ class WhisperForDiarization(torch.nn.Module):
         audio_time = round(len(audio_byte) / hp.sample_rate)
 
         # 加2是考虑了<|startofdiarization|>和<|zh|>两个token
-        for idx in range(audio_time + 2):
+        for idx in trange(audio_time + 2, colour="green"):
             decoder_outputs = self.whisper.decoder(
                 input_ids=input_ids,
                 encoder_hidden_states=encoder_outputs.last_hidden_state,
